@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Control de Stock</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <!-- XLSX para leer archivos Excel en el navegador (preview) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+
+<body>
+  <header class="header">
+    <h1>📦 Control de Stock</h1>
+  </header>
+
+  <main class="container">
+    <!-- Barra de acciones -->
+    <div class="actions-bar">
+      <div class="search-box">
+        <input type="text" id="searchInput" placeholder="Buscar producto...">
+      </div>
+      <div class="buttons">
+        <button id="btnNuevo" class="btn btn-primary">+ Nuevo Producto</button>
+        <button id="btnAgrupar" class="btn btn-info">🗂️ Agrupar</button>
+        <button id="btnImportar" class="btn btn-warning">📥 Importar</button>
+        <button id="btnGuardar" class="btn btn-success">💾 Guardar Excel</button>
+        <button id="btnRecargar" class="btn btn-secondary">🔄 Recargar</button>
+      </div>
+    </div>
+
+    <!-- Mensaje de notificación -->
+    <div id="mensaje" class="mensaje hidden"></div>
+
+    <!-- Resumen -->
+    <div class="resumen">
+      <span id="totalProductos">Total: <%= productos.length %> productos</span>
+      <span id="totalImporte">Valor total: $0,00</span>
+    </div>
+
+    <!-- Tabla de productos -->
+    <div class="table-container">
+      <table id="tablaStock">
+        <thead>
+          <tr>
+            <th class="sortable" data-sort="codigo">Código <span class="sort-icon">⇅</span></th>
+            <th class="sortable" data-sort="descripcion">Descripción <span class="sort-icon">⇅</span></th>
+            <th class="sortable" data-sort="ubicacion">Ubicación <span class="sort-icon">⇅</span></th>
+            <th class="sortable" data-sort="cantidad">Cantidad <span class="sort-icon">⇅</span></th>
+            <th class="sortable" data-sort="precio">Precio <span class="sort-icon">⇅</span></th>
+            <th class="sortable" data-sort="importe">Importe <span class="sort-icon">⇅</span></th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="stockBody">
+          <% productos.forEach(producto => { %>
+          <tr data-id="<%= producto.id %>">
+            <td><%= producto.codigo %></td>
+            <td><%= producto.descripcion %></td>
+            <td><%= producto.ubicacion %></td>
+            <td class="text-right"><%= producto.cantidad %></td>
+            <td class="text-right precio"><%= producto.precio %></td>
+            <td class="text-right importe"><%= producto.importe %></td>
+            <td class="acciones">
+              <button class="btn-icon btn-editar" title="Editar">✏️</button>
+              <button class="btn-icon btn-eliminar" title="Eliminar">🗑️</button>
+            </td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Modal para agregar/editar producto -->
+    <div id="modal" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 id="modalTitulo">Nuevo Producto</h2>
+          <button id="btnCerrarModal" class="btn-close">&times;</button>
+        </div>
+        <form id="formProducto">
+          <input type="hidden" id="productoId">
+          <div class="form-group">
+            <label for="codigo">Código</label>
+            <input type="text" id="codigo" name="codigo" required>
+          </div>
+          <div class="form-group">
+            <label for="descripcion">Descripción</label>
+            <input type="text" id="descripcion" name="descripcion" required>
+          </div>
+          <div class="form-group">
+            <label for="ubicacion">Ubicación</label>
+            <input type="text" id="ubicacion" name="ubicacion">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="cantidad">Cantidad</label>
+              <input type="number" id="cantidad" name="cantidad" min="0" step="1" value="0">
+            </div>
+            <div class="form-group">
+              <label for="precio">Precio</label>
+              <input type="number" id="precio" name="precio" min="0" step="0.01" value="0">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Importe (calculado)</label>
+            <div id="importeCalculado" class="importe-preview">$0,00</div>
+          </div>
+          <div class="form-actions">
+            <button type="button" id="btnCancelar" class="btn btn-secondary">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Guardar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal para importar archivo -->
+    <div id="modalImportar" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>📥 Importar Stock</h2>
+          <button id="btnCerrarModalImportar" class="btn-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="import-info">
+            <p>Seleccioná un archivo <strong>Excel (.xlsx, .xls)</strong> o <strong>CSV</strong> para importar.</p>
+            <p class="text-muted">Las columnas reconocidas son: Codigo, Descripcion, Ubicacion, Cantidad, Precio</p>
+          </div>
+
+          <div class="form-group">
+            <label for="archivoImportar">Seleccionar archivo</label>
+            <input type="file" id="archivoImportar" accept=".xlsx,.xls,.csv" class="file-input">
+          </div>
+
+          <div id="previewImportar" class="preview-container hidden">
+            <h4>Vista previa</h4>
+            <p id="previewInfo"></p>
+            <div class="preview-table-container">
+              <table id="tablaPreview" class="table-preview">
+                <thead></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="import-options">
+            <label class="radio-option">
+              <input type="radio" name="importMode" value="agregar" checked>
+              <span>Agregar al stock existente</span>
+            </label>
+            <label class="radio-option">
+              <input type="radio" name="importMode" value="reemplazar">
+              <span>Reemplazar todo el stock</span>
+            </label>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" id="btnCancelarImportar" class="btn btn-secondary">Cancelar</button>
+            <button type="button" id="btnConfirmarImportar" class="btn btn-primary" disabled>Importar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de resultado de importación -->
+    <div id="modalResultadoImport" class="modal hidden">
+      <div class="modal-content modal-resultado">
+        <div class="modal-header resultado-header">
+          <h2 id="resultadoTitulo">✅ Importación Exitosa</h2>
+          <button id="btnCerrarResultado" class="btn-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="resultado-stats">
+            <div class="stat-item stat-total">
+              <span class="stat-numero" id="statTotalArchivo">0</span>
+              <span class="stat-label">Registros en archivo</span>
+            </div>
+            <div class="stat-item stat-validos">
+              <span class="stat-numero" id="statValidos">0</span>
+              <span class="stat-label">Registros importados</span>
+            </div>
+            <div class="stat-item stat-vacios">
+              <span class="stat-numero" id="statVacios">0</span>
+              <span class="stat-label">Registros vacíos/descartados</span>
+            </div>
+          </div>
+          <div class="resultado-valor">
+            <span class="valor-label">Valor total del stock importado:</span>
+            <span class="valor-monto" id="statValorTotal">$0,00</span>
+          </div>
+          <div class="resultado-mensaje" id="resultadoMensaje">
+            La importación se realizó correctamente.
+          </div>
+          <div class="form-actions">
+            <button type="button" id="btnAceptarResultado" class="btn btn-primary">Aceptar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/app.js"></script>
+</body>
+
+</html>
