@@ -1,2 +1,32 @@
-/node_modules
-node_modules
+# Dependencias
+node_modules/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE / Editores
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Variables de entorno
+.env
+.env.local
+.env.*.local
+
+# Archivos temporales
+tmp/
+temp/
+*.tmp
+
+# Cache
+.cache/
+.npm/
